@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT;
 const cors = require('cors');
 
 app.use(cors());
@@ -18,7 +18,7 @@ const User = require('./models/user');
 const Chat = require('./models/message');
 
 mongoose
-  .connect('mongodb+srv://vkd:vkd420@cluster0.zznszjh.mongodb.net/')
+  .connect('mongodb+srv://vkd:axwduUt7S4dnhynD@cluster0.zznszjh.mongodb.net/')
   .then(() => {
     console.log('Connected to MongoDB');
   })
