@@ -5,8 +5,13 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
 const app = express();
-const port = process.env.PORT;
+// const port = process.env.PORT;
+const port = 3000;
+const socketPort = 8000;
 const cors = require('cors');
+
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
 
 app.use(cors());
 
@@ -464,24 +469,26 @@ app.get('/received-likes/:userId', async (req, res) => {
   }
 });
 
+//endpoint to create a match betweeen two people
 app.post('/create-match', async (req, res) => {
   try {
-    const {currentUserId, selectedUserId} = req.params;
+    const {currentUserId, selectedUserId} = req.body;
 
-    await User.findByIdAndUpdate(currentUserId, {
-      $pull: {receivedLikes: selectedUserId},
-      $push: {matches: selectedUserId},
-    });
-
+    //update the selected user's crushes array and the matches array
     await User.findByIdAndUpdate(selectedUserId, {
       $push: {matches: currentUserId},
       $pull: {crushes: currentUserId},
     });
 
+    //update the current user's matches array recievedlikes array
+    await User.findByIdAndUpdate(currentUserId, {
+      $push: {matches: selectedUserId},
+      $pull: {receivedLikes: selectedUserId},
+    });
+
     res.sendStatus(200);
   } catch (error) {
-    res.status(500).json({message: 'Failed to create match.'});
-    console.log(error);
+    res.status(500).json({message: 'Error creating a match', error});
   }
 });
 
@@ -503,5 +510,55 @@ app.get('/fetch-matches/:userId', async (req, res) => {
     res.status(200).json({matches});
   } catch (error) {
     console.log('error: ', error);
+  }
+});
+
+/* --- web socket --- */
+
+//connection
+io.on('connect', socket => {
+  console.log('user online');
+
+  socket.on('send-message', async data => {
+    try {
+      const {senderId, receiverId, message} = data;
+
+      const newMessage = new Chat({senderId, receiverId, message});
+      await newMessage.save();
+
+      //emit the message to both users
+      io.to(receiverId).emit('receive-message', newMessage);
+    } catch (error) {
+      console.log(error);
+    }
+    socket.on('disconnect', () => {
+      console.log('user offline');
+    });
+  });
+});
+
+//socket status
+http.listen(socketPort, () => {
+  console.log('Socket server running on port ', socketPort);
+});
+
+//endpoint to receive messages
+app.get('/messages', async (req, res) => {
+  try {
+    const {senderId, receiverId} = req.query;
+
+    console.log('sender: ', senderId);
+    console.log('receiver: ', receiverId);
+
+    const messages = await Chat.find({
+      $or: [
+        {senderId: senderId, receiverId: receiverId},
+        {senderId: receiverId, receiverId: senderId},
+      ],
+    }).populate('senderId', '_id name');
+
+    res.status(200).json(messages);
+  } catch (error) {
+    res.status(500).json({message: 'Error in getting messages', error});
   }
 });
