@@ -547,9 +547,6 @@ app.get('/messages', async (req, res) => {
   try {
     const {senderId, receiverId} = req.query;
 
-    console.log('sender: ', senderId);
-    console.log('receiver: ', receiverId);
-
     const messages = await Chat.find({
       $or: [
         {senderId: senderId, receiverId: receiverId},
@@ -560,5 +557,42 @@ app.get('/messages', async (req, res) => {
     res.status(200).json(messages);
   } catch (error) {
     res.status(500).json({message: 'Error in getting messages', error});
+  }
+});
+
+//endpoint to delete a message
+app.post('/delete-message', async (req, res) => {
+  try {
+    const {messageId} = req.body;
+    console.log(messageId);
+
+    await Chat.findByIdAndDelete({_id: messageId});
+
+    res.status(200).json({message: 'Message deleted'});
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({message: 'Failed to delete the message'});
+  }
+});
+
+//endpoint to delete a chat
+app.post('/delete-chat', async (req, res) => {
+  try {
+    const {messageIds} = req.body;
+
+    console.log(messageIds);
+
+    if (!Array.isArray(messageIds) || messageIds.length == 0) {
+      return res.status(404).json({message: 'Invalid message ids.'});
+    }
+
+    for (const messageId of messageIds) {
+      await Chat.findByIdAndDelete({_id: messageId});
+    }
+
+    res.status(200).json({message: 'Chat has been deleted.'});
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({message: 'Failed to delete all messages.'});
   }
 });
