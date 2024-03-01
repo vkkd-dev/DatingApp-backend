@@ -38,7 +38,7 @@ app.listen(port, () => {
 // endpoints to register
 app.post('/register', async (req, res) => {
   try {
-    const {name, email, password} = req.body;
+    const {name, dob, email, password} = req.body;
 
     //check if the email is already registered
     const existingUser = await User.findOne({email});
@@ -50,6 +50,7 @@ app.post('/register', async (req, res) => {
     //create a new User
     const newUser = new User({
       name,
+      dob,
       email,
       password,
     });
